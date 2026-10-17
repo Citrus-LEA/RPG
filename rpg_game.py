@@ -13,6 +13,21 @@ menu_music.play(-1)
 bg_game = pygame.transform.scale(pygame.image.load('bg_rpg_game.jpg'), (screen_width, screen_height))
 game_music = pygame.mixer.Sound('rpg_music.mp3')
 
+bg_width, bg_height = bg.get_size()
+camera = pygame.Rect(0, 0, screen_width, screen_height)
+
+camera.x = hero.rect.x - screen_width // 2
+camera.y = hero.rect.y - screen_height // 2
+
+camera.x = max(0, min(camera.x, bg_width - screen_width))
+camera.y = max(0, min(camera.y, bg_height - screen_height))
+
+screen.blit(bg, (-camera.x, -camera.y))
+
+self.rect.x > bg_width-100
+
+screen.blit(self.image, (self.rect.x - camera.x, self.rect.y - camera.y))
+
 main_menu = True
 running = True
 finish = False
@@ -52,6 +67,9 @@ class Player(GameSprite):
             img = pygame.transform.scale(pygame.image.load(f'Warrior/Warrior/{i}.png'), (100, 120))
             self.attack_images.append(img)
 
+        self.stay_right = []
+        self.stay_left = []
+
         self.image = self.idle_image
         self.rect = self.image.get_rect()
         self.rect.x = x
@@ -67,6 +85,12 @@ class Player(GameSprite):
             self.rotation = 0
         if self.rect.x < 0:
             self.rotation = 1
+
+        if self.rotation == 0:
+            self.image = self.stay_right[self.pick_ind // 6]
+        elif self.rotation == 1:
+            self.image = self.stay_left[self.pick_ind // 6]
+        elif self.rotation == 2:
 
         if self.rotation == 2 or self.rotation == 3:
             self.animation_timer += 1
