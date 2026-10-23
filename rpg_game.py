@@ -13,20 +13,8 @@ menu_music.play(-1)
 bg_game = pygame.transform.scale(pygame.image.load('bg_rpg_game.jpg'), (screen_width, screen_height))
 game_music = pygame.mixer.Sound('rpg_music.mp3')
 
-bg_width, bg_height = bg.get_size()
+bg_width, bg_height = bg_game.get_size()
 camera = pygame.Rect(0, 0, screen_width, screen_height)
-
-camera.x = hero.rect.x - screen_width // 2
-camera.y = hero.rect.y - screen_height // 2
-
-camera.x = max(0, min(camera.x, bg_width - screen_width))
-camera.y = max(0, min(camera.y, bg_height - screen_height))
-
-screen.blit(bg, (-camera.x, -camera.y))
-
-self.rect.x > bg_width-100
-
-screen.blit(self.image, (self.rect.x - camera.x, self.rect.y - camera.y))
 
 main_menu = True
 running = True
@@ -34,81 +22,55 @@ finish = False
 game_start = False
 
 class GameSprite:
-    def __init__(self, picture, x, y):
+    def init(self, picture, x, y):
         self.image = pygame.transform.scale(pygame.image.load(picture), (100, 120))
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
 
     def draw(self):
-        screen.blit(self.image, (self.rect.x, self.rect.y))
+        screen.blit(self.image, (self.rect.x - camera.x, self.rect.y - camera.y))
 
 class Player(GameSprite):
     def __init__(self, x, y, speed):
         self.speed = speed
         self.rotation = 0
-        self.frame = 0
-        self.animation_timer = 0
+        self.pick_ind = 0
         
-        self.run_images = []
-        for i in range(11, 19):
-            img = pygame.transform.scale(pygame.image.load(f'Warrior/Warrior/{i}.png'), (100, 120))
-            self.run_images.append(img)
-            
-        self.idle_image = pygame.transform.scale(pygame.image.load('Warrior/Warrior/1.png'), (100, 120))
+        path = 'Warrior/Warrior/'
         
-        self.death_images = []
-        for i in range(61, 68):
-            img = pygame.transform.scale(pygame.image.load(f'Warrior/Warrior/{i}.png'), (100, 120))
-            self.death_images.append(img)
-            
-        self.attack_images = []
-        for i in range(41, 48):
-            img = pygame.transform.scale(pygame.image.load(f'Warrior/Warrior/{i}.png'), (100, 120))
-            self.attack_images.append(img)
+        self.move_right = [pygame.transform.scale(pygame.image.load(f'{path}{i}.png'), (100, 120)).convert_alpha() for i in range(11, 19)]
+        self.move_left = [pygame.transform.flip(pic, True, False) for pic in self.move_right]
+        
+        self.stay_right = [pygame.transform.scale(pygame.image.load(f'{path}{i}.png'), (100, 120)).convert_alpha() for i in range(1, 11)]
+        self.stay_left = [pygame.transform.flip(pic, True, False) for pic in self.stay_right]
 
-        self.stay_right = []
-        self.stay_left = []
-
-        self.image = self.idle_image
+        self.image = self.stay_right[0]
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
 
     def animate(self):
         if self.rotation == 2:
+            self.image = self.move_right[self.pick_ind // 7]
             self.rect.x += self.speed
         elif self.rotation == 3:
+            self.image = self.move_left[self.pick_ind // 7]
             self.rect.x -= self.speed
-        
-        if self.rect.x > screen_width - 100:
-            self.rotation = 0
-        if self.rect.x < 0:
-            self.rotation = 1
-
-        if self.rotation == 0:
+        elif self.rotation == 0:
             self.image = self.stay_right[self.pick_ind // 6]
         elif self.rotation == 1:
             self.image = self.stay_left[self.pick_ind // 6]
-        elif self.rotation == 2:
 
-        if self.rotation == 2 or self.rotation == 3:
-            self.animation_timer += 1
-            if self.animation_timer >= 5:
-                self.animation_timer = 0
-                self.frame += 1
-                if self.frame >= len(self.run_images):
-                    self.frame = 0
-                
-                current_img = self.run_images[self.frame]
-                if self.rotation == 3:
-                    current_img = pygame.transform.flip(current_img, True, False)
-                self.image = current_img
-        else:
-            self.frame = 0
-            self.image = self.idle_image
-            if self.rotation == 1:
-                self.image = pygame.transform.flip(self.image, True, False)
+        self.pick_ind += 1
+        
+        if self.pick_ind >= 56:
+            self.pick_ind = 0
+
+        if self.rect.x > bg_width - 100:
+            self.rect.x = bg_width - 100
+        if self.rect.x < 0:
+            self.rect.x = 0
 
 def start_screen():
     start = pygame.transform.scale(pygame.image.load('start.jpg'), (200, 70))
@@ -152,8 +114,6 @@ while running:
                     hero.rotation = 2
                 elif event.key == pygame.K_LEFT:
                     hero.rotation = 3
-                elif event.key == pygame.K_SPACE:
-                    pass
             
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_RIGHT and hero.rotation == 2:
@@ -162,7 +122,14 @@ while running:
                     hero.rotation = 1
 
         if game_start:
-            screen.blit(bg_game, (0, 0))
+            camera.x = hero.rect.x - screen_width // 2
+            camera.y = hero.rect.y - screen_height // 2
+            
+            camera.x = max(0, min(camera.x, bg_width - screen_width))
+            camera.y = max(0, min(camera.y, bg_height - screen_height))
+            
+            screen.blit(bg_game, (-camera.x, -camera.y))
+            
             hero.animate()
             hero.draw() 
 
