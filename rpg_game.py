@@ -1,5 +1,6 @@
 import pygame
 import sys
+from random import randint
 pygame.init()
 
 screen_width = 800
@@ -22,10 +23,12 @@ finish = False
 game_start = False
 
 bullets = pygame.sprite.Group()
+enemies = pygame.sprite.Group()
 
-class GameSprite:
-    def init(self, picture, x, y):
-        self.image = pygame.transform.scale(pygame.image.load(picture), (100, 120))
+class GameSprite(pygame.sprite.Sprite):
+    def __init__(self, picture, x, y, width=100, height=120):
+        super().__init__()
+        self.image = pygame.transform.scale(pygame.image.load(picture), (width, height))
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -35,6 +38,7 @@ class GameSprite:
 
 class Player(GameSprite):
     def __init__(self, x, y, speed):
+        super().__init__('Warrior/Warrior/1.png', x, y)
         self.speed = speed
         self.rotation = 0
         self.pick_ind = 0
@@ -47,13 +51,7 @@ class Player(GameSprite):
         self.stay_right = [pygame.transform.scale(pygame.image.load(f'{path}{i}.png'), (100, 120)).convert_alpha() for i in range(1, 11)]
         self.stay_left = [pygame.transform.flip(pic, True, False) for pic in self.stay_right]
 
-        self.image = self.stay_right[0]
-        self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
-
-        self.atk = [pygame.transform.scale(pygame.image.load(f'{path}{i}.png'), (100,120)).convert_alpha() for i in range(41,48)]
-
+        self.atk = [pygame.transform.scale(pygame.image.load(f'{path}{i}.png'), (100, 120)).convert_alpha() for i in range(41, 48)]
 
     def animate(self):
         if self.rotation == 2:
@@ -67,51 +65,45 @@ class Player(GameSprite):
         elif self.rotation == 1:
             self.image = self.stay_left[self.pick_ind // 6]
         elif self.rotation == 4:
-                self.image = self.atk[self.pick_ind // 4]
-
-
+            self.image = self.atk[self.pick_ind // 4]
         
         if self.rotation == 4:
-                self.pick_ind = (self.pick_ind + 1) % 25
+            self.pick_ind = (self.pick_ind + 1) % 25
         else:
-                self.pick_ind = (self.pick_ind + 1) % 55
-
+            self.pick_ind = (self.pick_ind + 1) % 55
 
         if self.rect.x > bg_width - 100:
             self.rect.x = bg_width - 100
         if self.rect.x < 0:
             self.rect.x = 0
 
-
-
-
     def update_rotation(self, new_rotation):
-                if new_rotation != self.rotation:
-                        self.rotation = new_rotation
-                        self.pick_ind = 0
-
+        if new_rotation != self.rotation:
+            self.rotation = new_rotation
+            self.pick_ind = 0
 
 class Enemy(GameSprite):
-        def update(self):
-                if self.rect.x < 7500:
-                        self.rect.x += 5
+    def __init__(self, x, y):
+        super().__init__('enemy.png', x, y)
+        
+    def update(self):
+        if self.rect.x < 7500:
+            self.rect.x += 5
+
+    def fire(self):
+        bullet = Bullet('bullet.png', self.rect.left, self.rect.centery, randint(4, 7), 20, 20)
+        bullets.add(bullet)
 
 class Bullet(GameSprite):
-        def __init__(self, picture, x, y, speed, width, height):
-                super().__init__(picture, x, y)
-                self.speed = speed
-                self.image = pygame.transform.scale(pygame.image.load(picture), (width, height))
+    def __init__(self, picture, x, y, speed, width, height):
+        super().__init__(picture, x, y, width, height)
+        self.speed = speed
 
-        def update(self):
-            if hero.rotation == 2:
-                    self.rect.x -= self.speed + hero.speed
-            else:
-            	       self.rect.x -= self.speed
-
-class GameSprite(pygame.sprite.Sprite):
-        def __init__(self, picture, x, y):
-                super().__init__()
-        from random import randint  # скорость движения пули сделаем случайной
+    def update(self):
+        if hero.rotation == 2:
+            self.rect.x -= self.speed + hero.speed
+        else:
+            self.rect.x -= self.speed
 
 def start_screen():
     start = pygame.transform.scale(pygame.image.load('start.jpg'), (200, 70))
@@ -125,8 +117,9 @@ def start_screen():
     return start_rect, stop_rect
 
 hero = Player(300, 450, 3)
+enemy = Enemy(600, 450)
 
-enemy Enemy(600, 450)
+pygame.time.set_timer(pygame.USEREVENT, 3000)
 
 start_rect, stop_rect = start_screen()
 
@@ -154,26 +147,20 @@ while running:
             
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RIGHT:
-                    hero.rotation = 2
+                    hero.update_rotation(2)
                 elif event.key == pygame.K_LEFT:
-                    hero.rotation = 3
+                    hero.update_rotation(3)
+                elif event.key == pygame.K_SPACE:
+                    hero.update_rotation(4)
             
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_RIGHT and hero.rotation == 2:
-                    hero.rotation = 0
+                    hero.update_rotation(0)
                 elif event.key == pygame.K_LEFT and hero.rotation == 3:
-                    hero.rotation = 1
+                    hero.update_rotation(1)
 
-            if event.type == pygame.KEYUP and event.key == pygame.K_RIGHT:
-                        hero.update_rotation(0)
-                elif event.type == pygame.KEYUP and event.key == pygame.K_LEFT:
-                        hero.update_rotation(1)  
-                elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-                        hero.update_rotation(2)
-                elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                        hero.update_rotation(3)
-                elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                        hero.update_rotation(4)
+            if event.type == pygame.USEREVENT:
+                enemy.fire()
 
         if game_start:
             camera.x = hero.rect.x - screen_width // 2
@@ -190,6 +177,10 @@ while running:
             enemy.draw()
             enemy.update()
 
+            for bullet in bullets:
+                screen.blit(bullet.image, (bullet.rect.x - camera.x, bullet.rect.y - camera.y))
+            
+            bullets.update()
 
     pygame.display.flip()
     pygame.time.delay(20)
