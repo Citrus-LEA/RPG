@@ -17,13 +17,25 @@ game_music = pygame.mixer.Sound('rpg_music.mp3')
 bg_width, bg_height = bg_game.get_size()
 camera = pygame.Rect(0, 0, screen_width, screen_height)
 
-main_menu = True
 running = True
 finish = False
-game_start = False
+
+if hero.animation_lose:
+    game_start = False
+    main_menu = True
+    hero.animation_lose = False
+    for b in bullets:
+        b.kill()
+    hero.rotation = 0
+    hero.rect.x = 300
+    hero.rect.y = 450
+    enemy.rect.x = 600
+    enemy.rect.y = 450
 
 bullets = pygame.sprite.Group()
 enemies = pygame.sprite.Group()
+
+pygame.sprite.spritecollide(hero, bullets, True)
 
 class GameSprite(pygame.sprite.Sprite):
     def __init__(self, picture, x, y, width=100, height=120):
@@ -42,6 +54,9 @@ class Player(GameSprite):
         self.speed = speed
         self.rotation = 0
         self.pick_ind = 0
+        self.animation_lose = False
+        if pygame.sprite.collide_rect(hero, enemy):
+            print("Кажется врагу нездоровится")
         
         path = 'Warrior/Warrior/'
         
@@ -52,6 +67,8 @@ class Player(GameSprite):
         self.stay_left = [pygame.transform.flip(pic, True, False) for pic in self.stay_right]
 
         self.atk = [pygame.transform.scale(pygame.image.load(f'{path}{i}.png'), (100, 120)).convert_alpha() for i in range(41, 48)]
+
+        self.death = [pygame.transform.scale(pygame.image.load(f'{path}{i}.png'), (100, 120)).convert_alpha() for i in range(61, 68)]
 
     def animate(self):
         if self.rotation == 2:
@@ -66,11 +83,17 @@ class Player(GameSprite):
             self.image = self.stay_left[self.pick_ind // 6]
         elif self.rotation == 4:
             self.image = self.atk[self.pick_ind // 4]
+        elif self.rotation == 5:
+            self.image = self.death[self.pick_ind // 6]
         
         if self.rotation == 4:
             self.pick_ind = (self.pick_ind + 1) % 25
         else:
             self.pick_ind = (self.pick_ind + 1) % 55
+
+        if self.rotation == 5 and self.pick_ind == 36:
+            self.animation_lose = True
+
 
         if self.rect.x > bg_width - 100:
             self.rect.x = bg_width - 100
@@ -181,6 +204,12 @@ while running:
                 screen.blit(bullet.image, (bullet.rect.x - camera.x, bullet.rect.y - camera.y))
             
             bullets.update()
+
+            if hero.rotation == 4:
+                pygame.sprite.spritecollide(hero, bullets, True)
+            else:
+                if pygame.sprite.spritecollide(hero, bullets, False):
+                    hero.update_rotation(5)
 
     pygame.display.flip()
     pygame.time.delay(20)
