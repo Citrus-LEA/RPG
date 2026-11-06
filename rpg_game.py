@@ -17,30 +17,20 @@ game_music = pygame.mixer.Sound('rpg_music.mp3')
 bg_width, bg_height = bg_game.get_size()
 camera = pygame.Rect(0, 0, screen_width, screen_height)
 
+main_menu = True
 running = True
 finish = False
-
-if hero.animation_lose:
-    game_start = False
-    main_menu = True
-    hero.animation_lose = False
-    for b in bullets:
-        b.kill()
-    hero.rotation = 0
-    hero.rect.x = 300
-    hero.rect.y = 450
-    enemy.rect.x = 600
-    enemy.rect.y = 450
+game_start = False
 
 bullets = pygame.sprite.Group()
-enemies = pygame.sprite.Group()
 
-pygame.sprite.spritecollide(hero, bullets, True)
+font = pygame.font.SysFont('Arial', 70)
+win_text = font.render("ПОБЕДА", True, (0, 255, 0))
 
 class GameSprite(pygame.sprite.Sprite):
     def __init__(self, picture, x, y, width=100, height=120):
         super().__init__()
-        self.image = pygame.transform.scale(pygame.image.load(picture), (width, height))
+        self.image = pygame.transform.scale(pygame.image.load(picture), (width, height)).convert_alpha()
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -55,8 +45,6 @@ class Player(GameSprite):
         self.rotation = 0
         self.pick_ind = 0
         self.animation_lose = False
-        if pygame.sprite.collide_rect(hero, enemy):
-            print("Кажется врагу нездоровится")
         
         path = 'Warrior/Warrior/'
         
@@ -67,7 +55,6 @@ class Player(GameSprite):
         self.stay_left = [pygame.transform.flip(pic, True, False) for pic in self.stay_right]
 
         self.atk = [pygame.transform.scale(pygame.image.load(f'{path}{i}.png'), (100, 120)).convert_alpha() for i in range(41, 48)]
-
         self.death = [pygame.transform.scale(pygame.image.load(f'{path}{i}.png'), (100, 120)).convert_alpha() for i in range(61, 68)]
 
     def animate(self):
@@ -88,18 +75,13 @@ class Player(GameSprite):
         
         if self.rotation == 4:
             self.pick_ind = (self.pick_ind + 1) % 25
+        elif self.rotation == 5:
+            self.pick_ind = (self.pick_ind + 1) % 42
+            if self.pick_ind == 36:
+                self.animation_lose = True
         else:
             self.pick_ind = (self.pick_ind + 1) % 55
-
-        if self.rotation == 5 and self.pick_ind == 36:
-            self.animation_lose = True
-
-
-        if self.rect.x > bg_width - 100:
-            self.rect.x = bg_width - 100
-        if self.rect.x < 0:
-            self.rect.x = 0
-
+            
     def update_rotation(self, new_rotation):
         if new_rotation != self.rotation:
             self.rotation = new_rotation
@@ -110,7 +92,7 @@ class Enemy(GameSprite):
         super().__init__('enemy.png', x, y)
         
     def update(self):
-        if self.rect.x < 7500:
+        if self.rect.x < 1200:
             self.rect.x += 5
 
     def fire(self):
@@ -139,7 +121,7 @@ def start_screen():
     
     return start_rect, stop_rect
 
-hero = Player(300, 450, 3)
+hero = Player(300, 450, 5)
 enemy = Enemy(600, 450)
 
 pygame.time.set_timer(pygame.USEREVENT, 3000)
@@ -174,7 +156,8 @@ while running:
                 elif event.key == pygame.K_LEFT:
                     hero.update_rotation(3)
                 elif event.key == pygame.K_SPACE:
-                    hero.update_rotation(4)
+                    if hero.rotation != 5:
+                        hero.update_rotation(4)
             
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_RIGHT and hero.rotation == 2:
@@ -182,23 +165,40 @@ while running:
                 elif event.key == pygame.K_LEFT and hero.rotation == 3:
                     hero.update_rotation(1)
 
-            if event.type == pygame.USEREVENT:
+            if event.type == pygame.USEREVENT and game_start and hero.rotation != 5:
                 enemy.fire()
 
         if game_start:
+            if hero.animation_lose:
+                game_start = False
+                main_menu = True
+                hero.animation_lose = False
+                for b in bullets:
+                    b.kill()
+                hero.rotation = 0
+                hero.rect.x = 300
+                hero.rect.y = 450
+                enemy.rect.x = 600
+                enemy.rect.y = 450
+                game_music.stop()
+                menu_music.play(-1)
+
+            hero.animate()
+            enemy.update()
+
             camera.x = hero.rect.x - screen_width // 2
             camera.y = hero.rect.y - screen_height // 2
+
+            if camera.x < 0:
+                camera.x = 0
             
-            camera.x = max(0, min(camera.x, bg_width - screen_width))
-            camera.y = max(0, min(camera.y, bg_height - screen_height))
-            
+            if camera.y > bg_height - screen_height:
+                camera.y = bg_height - screen_height
+
             screen.blit(bg_game, (-camera.x, -camera.y))
             
-            hero.animate()
             hero.draw() 
-
             enemy.draw()
-            enemy.update()
 
             for bullet in bullets:
                 screen.blit(bullet.image, (bullet.rect.x - camera.x, bullet.rect.y - camera.y))
@@ -207,7 +207,22 @@ while running:
 
             if hero.rotation == 4:
                 pygame.sprite.spritecollide(hero, bullets, True)
-            else:
+                if pygame.sprite.collide_rect(hero, enemy):
+                    screen.blit(win_text, (300, 250))
+                    pygame.display.flip()
+                    pygame.time.delay(2000)
+                    game_start = False
+                    main_menu = True
+                    for b in bullets:
+                        b.kill()
+                    hero.rotation = 0
+                    hero.rect.x = 300
+                    hero.rect.y = 450
+                    enemy.rect.x = 600
+                    enemy.rect.y = 450
+                    game_music.stop()
+                    menu_music.play(-1)
+            elif hero.rotation != 5:
                 if pygame.sprite.spritecollide(hero, bullets, False):
                     hero.update_rotation(5)
 
